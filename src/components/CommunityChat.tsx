@@ -127,6 +127,7 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
           const isMe = m.user_id === userId;
           const mediaUrl = m.media_url ? signed.get(m.media_url) : null;
           const isVideo = m.media_url && /\.(mp4|webm|mov|m4v)$/i.test(m.media_url);
+          const isAudio = m.media_url && /\.(webm-audio|mp3|wav|m4a|ogg|oga)$/i.test(m.media_url);
           return (
             <div key={m.id} className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
               {author?.avatar_url ? (
@@ -142,7 +143,9 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
                   {m.content}
                   {mediaUrl && (
                     <div className="mt-2 overflow-hidden rounded-lg">
-                      {isVideo ? (
+                      {isAudio ? (
+                        <audio src={mediaUrl} controls className="w-full" />
+                      ) : isVideo ? (
                         <video src={mediaUrl} controls className="max-h-64 w-full bg-black" />
                       ) : (
                         <img src={mediaUrl} alt="" className="max-h-64 w-full object-cover" />
