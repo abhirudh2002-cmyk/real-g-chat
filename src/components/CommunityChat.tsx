@@ -156,6 +156,8 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
     recorderRef.current = null;
     setRecording(false);
     if (recordTimer.current) { clearInterval(recordTimer.current); recordTimer.current = null; }
+  }
+
 
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[480px] flex-col rounded-2xl border border-border bg-card">
