@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ImagePlus, Send, X } from "lucide-react";
+import { ImagePlus, Mic, Send, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -21,6 +21,11 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunks = useRef<Blob[]>([]);
+  const recordTimer = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -111,6 +116,49 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
     }
   }
 
+  async function startRecording() {
+    if (recording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      recordChunks.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) recordChunks.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recordChunks.current, { type: mr.mimeType || "audio/webm" });
+        const ext = (mr.mimeType || "audio/webm").includes("mp4") ? "m4a" : "oga";
+        const f = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type });
+        setBusy(true);
+        try {
+          const path = `${userId}/${communityId}/${f.name}`;
+          const { error: upErr } = await supabase.storage.from("community-media").upload(path, f);
+          if (upErr) throw upErr;
+          const { error } = await supabase.from("community_messages").insert({
+            community_id: communityId, user_id: userId, content: null, media_url: path,
+          });
+          if (error) throw error;
+        } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+      };
+      mr.start();
+      recorderRef.current = mr;
+      setRecording(true);
+      setRecordSecs(0);
+      recordTimer.current = window.setInterval(() => setRecordSecs((s) => s + 1), 1000);
+    } catch (e: any) {
+      toast.error("Microphone access denied", { description: e.message });
+    }
+  }
+
+  function stopRecording(cancel = false) {
+    if (!recorderRef.current) return;
+    if (cancel) recorderRef.current.ondataavailable = null as any;
+    recorderRef.current.stop();
+    recorderRef.current = null;
+    setRecording(false);
+    if (recordTimer.current) { clearInterval(recordTimer.current); recordTimer.current = null; }
+  }
+
+
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[480px] flex-col rounded-2xl border border-border bg-card">
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -122,6 +170,7 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
           const isMe = m.user_id === userId;
           const mediaUrl = m.media_url ? signed.get(m.media_url) : null;
           const isVideo = m.media_url && /\.(mp4|webm|mov|m4v)$/i.test(m.media_url);
+          const isAudio = m.media_url && /\.(webm-audio|mp3|wav|m4a|ogg|oga)$/i.test(m.media_url);
           return (
             <div key={m.id} className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
               {author?.avatar_url ? (
@@ -137,7 +186,9 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
                   {m.content}
                   {mediaUrl && (
                     <div className="mt-2 overflow-hidden rounded-lg">
-                      {isVideo ? (
+                      {isAudio ? (
+                        <audio src={mediaUrl} controls className="w-full" />
+                      ) : isVideo ? (
                         <video src={mediaUrl} controls className="max-h-64 w-full bg-black" />
                       ) : (
                         <img src={mediaUrl} alt="" className="max-h-64 w-full object-cover" />
@@ -158,28 +209,46 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
             <button type="button" onClick={() => setFile(null)}><X className="size-3" /></button>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => fileInput.current?.click()} className="rounded-md bg-elevated p-2 hover:bg-secondary">
-            <ImagePlus className="size-4" />
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={(e) => { setFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
-          />
-          <input
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            maxLength={1000}
-            placeholder="Message…"
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
-          />
-          <button type="submit" disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">
-            <Send className="size-4" />
-          </button>
-        </div>
+        {recording ? (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => stopRecording(true)} className="rounded-md bg-elevated p-2 hover:bg-secondary" title="Cancel">
+              <X className="size-4" />
+            </button>
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+              <span className="size-2 animate-pulse rounded-full bg-destructive" />
+              Recording… {Math.floor(recordSecs / 60)}:{String(recordSecs % 60).padStart(2, "0")}
+            </div>
+            <button type="button" onClick={() => stopRecording(false)} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+              <Send className="size-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => fileInput.current?.click()} className="rounded-md bg-elevated p-2 hover:bg-secondary" title="Attach photo or video">
+              <ImagePlus className="size-4" />
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*,video/*,audio/*"
+              className="hidden"
+              onChange={(e) => { setFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
+            />
+            <button type="button" onClick={startRecording} className="rounded-md bg-elevated p-2 hover:bg-secondary" title="Record voice message">
+              <Mic className="size-4" />
+            </button>
+            <input
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              maxLength={1000}
+              placeholder="Message…"
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
+            />
+            <button type="submit" disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">
+              <Send className="size-4" />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );
