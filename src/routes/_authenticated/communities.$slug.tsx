@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/communities/$slug")({
 
 function CommunityDetail() {
   const { slug } = Route.useParams();
-  const [tab, setTab] = useState<"posts" | "chat">("posts");
+  const [tab, setTab] = useState<"posts" | "chat">("chat");
 
   const { data: userId } = useQuery({
     queryKey: ["me"],

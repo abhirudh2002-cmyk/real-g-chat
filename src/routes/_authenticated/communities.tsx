@@ -94,23 +94,22 @@ function CommunitiesPage() {
               <span className="capitalize">{c.category}</span>
             </div>
             <div className="mt-4 flex gap-2">
-              {c.joined ? (
-                <Link
-                  to="/communities/$slug"
-                  params={{ slug: c.slug }}
-                  className="flex-1 rounded-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-                >
-                  Open
-                </Link>
-              ) : (
+              {!c.joined && (
                 <button
                   onClick={() => join.mutate(c.id)}
                   disabled={join.isPending}
                   className="flex-1 rounded-lg border border-border bg-elevated px-3 py-2 text-sm font-semibold transition hover:bg-secondary disabled:opacity-50"
                 >
-                  Join
+                  {join.isPending ? "Joining…" : "Join"}
                 </button>
               )}
+              <Link
+                to="/communities/$slug"
+                params={{ slug: c.slug }}
+                className="flex-1 rounded-lg bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+              >
+                Open
+              </Link>
             </div>
           </div>
         ))}
