@@ -116,6 +116,47 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
     }
   }
 
+  async function startRecording() {
+    if (recording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      recordChunks.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) recordChunks.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(recordChunks.current, { type: mr.mimeType || "audio/webm" });
+        const ext = (mr.mimeType || "audio/webm").includes("mp4") ? "m4a" : "oga";
+        const f = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type });
+        setBusy(true);
+        try {
+          const path = `${userId}/${communityId}/${f.name}`;
+          const { error: upErr } = await supabase.storage.from("community-media").upload(path, f);
+          if (upErr) throw upErr;
+          const { error } = await supabase.from("community_messages").insert({
+            community_id: communityId, user_id: userId, content: null, media_url: path,
+          });
+          if (error) throw error;
+        } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+      };
+      mr.start();
+      recorderRef.current = mr;
+      setRecording(true);
+      setRecordSecs(0);
+      recordTimer.current = window.setInterval(() => setRecordSecs((s) => s + 1), 1000);
+    } catch (e: any) {
+      toast.error("Microphone access denied", { description: e.message });
+    }
+  }
+
+  function stopRecording(cancel = false) {
+    if (!recorderRef.current) return;
+    if (cancel) recorderRef.current.ondataavailable = null as any;
+    recorderRef.current.stop();
+    recorderRef.current = null;
+    setRecording(false);
+    if (recordTimer.current) { clearInterval(recordTimer.current); recordTimer.current = null; }
+
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[480px] flex-col rounded-2xl border border-border bg-card">
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
