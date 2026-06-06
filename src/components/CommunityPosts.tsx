@@ -20,7 +20,7 @@ type Post = {
 async function getSignedUrls(paths: string[]): Promise<string[]> {
   if (!paths.length) return [];
   const { data } = await supabase.storage.from("community-media").createSignedUrls(paths, 60 * 60);
-  return (data ?? []).map((d) => d.signedUrl);
+  return (data ?? []).map((d) => d.signedUrl).filter((u): u is string => !!u);
 }
 
 export function CommunityPosts({ communityId, userId }: { communityId: string; userId: string }) {
