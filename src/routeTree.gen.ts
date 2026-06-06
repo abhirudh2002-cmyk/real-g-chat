@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCommunitiesRouteImport } from './routes/_authenticated/communities'
 import { Route as AuthenticatedCommunitiesIndexRouteImport } from './routes/_authenticated/communities.index'
 import { Route as AuthenticatedCommunitiesSlugRouteImport } from './routes/_authenticated/communities.$slug'
 
@@ -35,22 +36,29 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCommunitiesRoute =
+  AuthenticatedCommunitiesRouteImport.update({
+    id: '/communities',
+    path: '/communities',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCommunitiesIndexRoute =
   AuthenticatedCommunitiesIndexRouteImport.update({
-    id: '/communities/',
-    path: '/communities/',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCommunitiesRoute,
   } as any)
 const AuthenticatedCommunitiesSlugRoute =
   AuthenticatedCommunitiesSlugRouteImport.update({
-    id: '/communities/$slug',
-    path: '/communities/$slug',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => AuthenticatedCommunitiesRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/communities': typeof AuthenticatedCommunitiesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/communities/$slug': typeof AuthenticatedCommunitiesSlugRoute
   '/communities/': typeof AuthenticatedCommunitiesIndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/communities': typeof AuthenticatedCommunitiesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/communities/$slug': typeof AuthenticatedCommunitiesSlugRoute
   '/_authenticated/communities/': typeof AuthenticatedCommunitiesIndexRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/communities'
     | '/dashboard'
     | '/communities/$slug'
     | '/communities/'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/communities'
     | '/_authenticated/dashboard'
     | '/_authenticated/communities/$slug'
     | '/_authenticated/communities/'
@@ -127,33 +138,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/communities': {
+      id: '/_authenticated/communities'
+      path: '/communities'
+      fullPath: '/communities'
+      preLoaderRoute: typeof AuthenticatedCommunitiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/communities/': {
       id: '/_authenticated/communities/'
-      path: '/communities'
+      path: '/'
       fullPath: '/communities/'
       preLoaderRoute: typeof AuthenticatedCommunitiesIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedCommunitiesRoute
     }
     '/_authenticated/communities/$slug': {
       id: '/_authenticated/communities/$slug'
-      path: '/communities/$slug'
+      path: '/$slug'
       fullPath: '/communities/$slug'
       preLoaderRoute: typeof AuthenticatedCommunitiesSlugRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedCommunitiesRoute
     }
   }
 }
 
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+interface AuthenticatedCommunitiesRouteChildren {
   AuthenticatedCommunitiesSlugRoute: typeof AuthenticatedCommunitiesSlugRoute
   AuthenticatedCommunitiesIndexRoute: typeof AuthenticatedCommunitiesIndexRoute
 }
 
+const AuthenticatedCommunitiesRouteChildren: AuthenticatedCommunitiesRouteChildren =
+  {
+    AuthenticatedCommunitiesSlugRoute: AuthenticatedCommunitiesSlugRoute,
+    AuthenticatedCommunitiesIndexRoute: AuthenticatedCommunitiesIndexRoute,
+  }
+
+const AuthenticatedCommunitiesRouteWithChildren =
+  AuthenticatedCommunitiesRoute._addFileChildren(
+    AuthenticatedCommunitiesRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCommunitiesRoute: typeof AuthenticatedCommunitiesRouteWithChildren
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+}
+
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCommunitiesRoute: AuthenticatedCommunitiesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedCommunitiesSlugRoute: AuthenticatedCommunitiesSlugRoute,
-  AuthenticatedCommunitiesIndexRoute: AuthenticatedCommunitiesIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
