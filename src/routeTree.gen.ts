@@ -13,7 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCommunitiesRouteImport } from './routes/_authenticated/communities'
+import { Route as AuthenticatedCommunitiesIndexRouteImport } from './routes/_authenticated/communities.index'
 import { Route as AuthenticatedCommunitiesSlugRouteImport } from './routes/_authenticated/communities.$slug'
 
 const AuthRoute = AuthRouteImport.update({
@@ -35,60 +35,60 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCommunitiesRoute =
-  AuthenticatedCommunitiesRouteImport.update({
-    id: '/communities',
-    path: '/communities',
+const AuthenticatedCommunitiesIndexRoute =
+  AuthenticatedCommunitiesIndexRouteImport.update({
+    id: '/communities/',
+    path: '/communities/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCommunitiesSlugRoute =
   AuthenticatedCommunitiesSlugRouteImport.update({
-    id: '/$slug',
-    path: '/$slug',
-    getParentRoute: () => AuthenticatedCommunitiesRoute,
+    id: '/communities/$slug',
+    path: '/communities/$slug',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/communities': typeof AuthenticatedCommunitiesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/communities/$slug': typeof AuthenticatedCommunitiesSlugRoute
+  '/communities/': typeof AuthenticatedCommunitiesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/communities': typeof AuthenticatedCommunitiesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/communities/$slug': typeof AuthenticatedCommunitiesSlugRoute
+  '/communities': typeof AuthenticatedCommunitiesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/communities': typeof AuthenticatedCommunitiesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/communities/$slug': typeof AuthenticatedCommunitiesSlugRoute
+  '/_authenticated/communities/': typeof AuthenticatedCommunitiesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
-    | '/communities'
     | '/dashboard'
     | '/communities/$slug'
+    | '/communities/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/communities' | '/dashboard' | '/communities/$slug'
+  to: '/' | '/auth' | '/dashboard' | '/communities/$slug' | '/communities'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/communities'
     | '/_authenticated/dashboard'
     | '/_authenticated/communities/$slug'
+    | '/_authenticated/communities/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -127,45 +127,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/communities': {
-      id: '/_authenticated/communities'
+    '/_authenticated/communities/': {
+      id: '/_authenticated/communities/'
       path: '/communities'
-      fullPath: '/communities'
-      preLoaderRoute: typeof AuthenticatedCommunitiesRouteImport
+      fullPath: '/communities/'
+      preLoaderRoute: typeof AuthenticatedCommunitiesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/communities/$slug': {
       id: '/_authenticated/communities/$slug'
-      path: '/$slug'
+      path: '/communities/$slug'
       fullPath: '/communities/$slug'
       preLoaderRoute: typeof AuthenticatedCommunitiesSlugRouteImport
-      parentRoute: typeof AuthenticatedCommunitiesRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-interface AuthenticatedCommunitiesRouteChildren {
-  AuthenticatedCommunitiesSlugRoute: typeof AuthenticatedCommunitiesSlugRoute
-}
-
-const AuthenticatedCommunitiesRouteChildren: AuthenticatedCommunitiesRouteChildren =
-  {
-    AuthenticatedCommunitiesSlugRoute: AuthenticatedCommunitiesSlugRoute,
-  }
-
-const AuthenticatedCommunitiesRouteWithChildren =
-  AuthenticatedCommunitiesRoute._addFileChildren(
-    AuthenticatedCommunitiesRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCommunitiesRoute: typeof AuthenticatedCommunitiesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedCommunitiesSlugRoute: typeof AuthenticatedCommunitiesSlugRoute
+  AuthenticatedCommunitiesIndexRoute: typeof AuthenticatedCommunitiesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCommunitiesRoute: AuthenticatedCommunitiesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedCommunitiesSlugRoute: AuthenticatedCommunitiesSlugRoute,
+  AuthenticatedCommunitiesIndexRoute: AuthenticatedCommunitiesIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -179,3 +167,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

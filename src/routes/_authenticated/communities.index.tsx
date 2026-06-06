@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/communities")({
+export const Route = createFileRoute("/_authenticated/communities/")({
   head: () => ({ meta: [{ title: "Communities — Real G" }] }),
   component: CommunitiesPage,
 });
