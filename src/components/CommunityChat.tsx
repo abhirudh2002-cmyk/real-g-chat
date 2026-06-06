@@ -209,28 +209,46 @@ export function CommunityChat({ communityId, userId }: { communityId: string; us
             <button type="button" onClick={() => setFile(null)}><X className="size-3" /></button>
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => fileInput.current?.click()} className="rounded-md bg-elevated p-2 hover:bg-secondary">
-            <ImagePlus className="size-4" />
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={(e) => { setFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
-          />
-          <input
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            maxLength={1000}
-            placeholder="Message…"
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
-          />
-          <button type="submit" disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">
-            <Send className="size-4" />
-          </button>
-        </div>
+        {recording ? (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => stopRecording(true)} className="rounded-md bg-elevated p-2 hover:bg-secondary" title="Cancel">
+              <X className="size-4" />
+            </button>
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+              <span className="size-2 animate-pulse rounded-full bg-destructive" />
+              Recording… {Math.floor(recordSecs / 60)}:{String(recordSecs % 60).padStart(2, "0")}
+            </div>
+            <button type="button" onClick={() => stopRecording(false)} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+              <Send className="size-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => fileInput.current?.click()} className="rounded-md bg-elevated p-2 hover:bg-secondary" title="Attach photo or video">
+              <ImagePlus className="size-4" />
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*,video/*,audio/*"
+              className="hidden"
+              onChange={(e) => { setFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
+            />
+            <button type="button" onClick={startRecording} className="rounded-md bg-elevated p-2 hover:bg-secondary" title="Record voice message">
+              <Mic className="size-4" />
+            </button>
+            <input
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              maxLength={1000}
+              placeholder="Message…"
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground"
+            />
+            <button type="submit" disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">
+              <Send className="size-4" />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );
