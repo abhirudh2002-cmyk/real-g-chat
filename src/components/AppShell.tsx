@@ -16,9 +16,33 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
 
+  // 1. Existing identity mounting effect
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted) setEmail(data.user?.email ?? null);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  // 2. NEW: Automatic cross-user security cache cleaner hook
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "SIGNED_IN" || event === "USER_UPDATED") {
+        qc.clear(); // Wipes browser memory instantly on user switch
+        
+        if (event === "SIGNED_OUT") {
+          navigate({ to: "/auth", replace: true });
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [qc, navigate]);
 
   async function signOut() {
     await qc.cancelQueries();
@@ -29,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
+      {/* Sidebar - Fully Restored */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-border bg-sidebar transition-transform md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
@@ -43,6 +67,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <X className="size-5" />
           </button>
         </div>
+        
         <nav className="space-y-1 p-3">
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = path === to || path.startsWith(to + "/");
@@ -60,6 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        
         <div className="absolute inset-x-3 bottom-3 rounded-lg border border-border bg-card p-3">
           <div className="truncate text-xs text-muted-foreground">{email}</div>
           <button
@@ -88,6 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
+      {/* Primary Page Content Wrapper Viewport */}
       <div className="md:pl-64">
         <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
       </div>

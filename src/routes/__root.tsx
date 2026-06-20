@@ -54,10 +54,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => { 
+              if (typeof window !== 'undefined') window.localStorage.clear();
+              router.invalidate(); 
+              reset(); 
+            }}
             className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
           >
-            Try again
+            Clear Cache & Try Again
           </button>
           <a
             href="/"
@@ -115,12 +119,33 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    // Safety check to ensure we only execute authentications inside a real live browser view window
+    if (!supabase || typeof window === 'undefined' || !supabase.auth) return;
+
+    let mounted = true;
+
+    const sessionPromise = supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      if (data?.session) {
+        router.invalidate();
+        queryClient.invalidateQueries();
+      }
+    }).catch(err => console.warn("Background session sync handled safely:", err));
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
-    return () => subscription.unsubscribe();
+
+    void sessionPromise;
+
+    return () => {
+      mounted = false;
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, [router, queryClient]);
 
   return (
